@@ -20,7 +20,29 @@ var server = http.createServer((req, res) => {
     req.on('end', () => {
         buffer+= decoder.end();
 
-        res.end('Hello BUG!\n');
+        const choosenHandler = typeof (router[trimmedPath]) !== 'undefined' ? router[trimmedPath] : handlers.notFound;
+
+        var data = {
+            'trimmedPath': trimmedPath,
+            'queryStringObject': queryStringObject,
+            'method': method,
+            'headers': headers,
+            'payload': buffer,
+        };
+
+        choosenHandler(data, (statusCode, payload) => {
+            statusCode = typeof(statusCode) === 'number' ? statusCode: 200;
+
+            payload = typeof(payload) === 'object' ? payload : new Object();
+
+            var payloadString = JSON.stringify(payload);
+
+            res.setHeader('Content-type', 'application/json');
+            res.writeHead(statusCode);
+            res.end(payloadString);
+
+            console.log('Response: ', payloadString, statusCode);
+        })
 
         console.log('Request received on path: ' + trimmedPath + ' with method ' + method);
         console.log(queryStringObject);
