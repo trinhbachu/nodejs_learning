@@ -1,8 +1,39 @@
 var http = require('http');
+var https = require('https');
 var url = require('url');
 var StringDecoder = require('string_decoder').StringDecoder;
+var config = require('./config');
+var fs = require('fs');
+var _data = require('./lib/data');
 
-var server = http.createServer((req, res) => {
+// _data.create('test', 'newFile', {'foo': 'bar'}, err => {
+//     console.log('Error:' + err);
+// })
+// _data.read('test', 'newFile', (err, data) => {
+//     console.log('Err:' + err);
+//     console.log('Data:' + data);
+
+// })
+
+_data.update('test', 'newFile', {'foo': 'change'}, (err) => {
+    console.log('Error:' + err);
+})
+
+var httpServer = http.createServer((req, res) => {
+    unifiedServer(req, res);
+});
+httpServer.listen(config.httpPort, () => console.log('Server is running in port ' + config.httpPort));
+
+var httpsServerOptions = {
+    'key': fs.readFileSync('./https/key.pem'),
+    'cert': fs.readFileSync('./https/cert.pem'),
+};
+var httpsServer = https.createServer(httpsServerOptions, (req, res) => {
+    unifiedServer(req, res);
+});
+httpsServer.listen(config.httpsPort, () => console.log('Server is running in port ' + config.httpsPort));
+
+var unifiedServer = (req, res) => {
     var parsedUrl = url.parse(req.url, true);
     var path = parsedUrl.pathname;
     var trimmedPath = path.replace(/\/+|\/+$/g, '');
@@ -31,6 +62,7 @@ var server = http.createServer((req, res) => {
         };
 
         choosenHandler(data, (statusCode, payload) => {
+            buffer += decoder.end();
             statusCode = typeof(statusCode) === 'number' ? statusCode: 200;
 
             payload = typeof(payload) === 'object' ? payload : new Object();
@@ -49,18 +81,15 @@ var server = http.createServer((req, res) => {
         console.log(headers);
         console.log(buffer);
     });
-
-
-});
-server.listen(3000, () => console.log('Server is running in port 3000!'));
+}
 
 var handlers = {};
-handlers.sample = (data, callback) => {
-    callback(406, {'name': 'sample handler'});
+handlers.ping = (data, callback) => {
+    callback(200);
 }
 handlers.notFound = (data, callback) => {
     callback(404);
 }
 var router = {
-    'sample': handlers.sample
+    'ping': handlers.ping
 }
